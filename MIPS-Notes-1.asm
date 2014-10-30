@@ -165,7 +165,7 @@ end:        lw      $a0     ($sp)               # S
 #       return (k*k+2);
 #   else
 #       return k*(-1);
-#
+
 .data
 v:          space   400
 
@@ -198,3 +198,80 @@ else:       li      $t2     -1
 if:         mult    $v0     $a0     $a0
             addi    $v0     $v0     2
 endg:       jr      $ra
+
+
+
+# "As part of a Sudoku-solving program, we want to implement a MIPS32 assembler
+# subroutine that checks whether the value in a cell meets the 3x3 square rule,
+# i.e. a number can not be repeated within a square 3x3 size. A sudoku is divided
+# into 9 squares of 3 x 3. Within each of these 3x3 squares not be repeated a
+# number (1 to 9), whether or not they are in the same row or column.
+# Assume that the sudoku is stored as an array of 9 x 9 elements. The matrix is
+# stored row by row in the data section and each element of the array is 1 byte.
+# The subroutine has as parameters:
+#   • Memory address of the input sudoku
+#   • The value to be inserted in the sudoku (a number from 0 to 9)
+#   • The index of the row and column where you want to introduce the previous
+#     value. The index of the row and the column will go from 0-8.
+# The function returns 0 if the content meets the Sudoku rules and 1 if it is
+# incorrect (does not meet the rule)."
+#
+#   C Implementation:
+#
+# int sudoku (byte table[][], int value, int x0, int y0){
+#
+#   int result = 0;
+#   int x = (x0/3)*3, y=(y0/3)*3;
+#   int i, j;
+#
+#   for (i = x; i < x+3; i++){
+#       for (j = y; j < y+3; j++) {
+#           if (table[i][j]==value)
+#               result = 0;
+#       }
+#   }
+#
+#   return result;
+# }
+#
+# Variables:
+#   $a0 - table
+#   $a1 - value
+#   $a2 - x0
+#   $a3 - y0
+#
+#   $t0 - x
+#   $t1 - y
+#   $t2 - i
+#   $t3 - j
+#
+#   $v0 - res
+
+sudoku:     div     $t0     $a2     3           # x = x0/3;
+            mult    $t0     $t0     3           # x = x*3;
+            div     $t1     $a3     3           # y = y0/3;
+            mult    $t1     $t1     3           # y = y*3;
+            addu    $t4     $t0     3           # cond1 = x + 3;
+            addu    $t5     $t1     3           # cond2 = y + 3;
+            move    $t2     $t0                 # i = x;
+for1:       beq     $t2     $t4     end1        # if (i==cond1) go to end1
+            move    $t3     $t1                 # j = y;
+for2:       beq     $t3     $t5     end2        # if (j==cond2) go to end2
+            mul     $t6     $t2     9           # t6 = i * 9    // address
+            addu    $t6     $t6     $t3         # t6 = t6 + j   // address
+
+# No need to multiply the number by the size of the elements since they are stored
+# as bytes in the exercise, so offset * 1 = 1
+
+            add     $t6     $a0     $t6         # table[i][j]   //address
+            lbu     $t7     ($t6)               # t7 = table[i][j];
+            beq     $t7     $a1     end_false   # if (t7==value) go to end_false
+            addi    $t3     $t3     1           # j++;
+            b       for2                        # go to for2
+end2:       addi    $t2     $t2     1           # i++;
+            b       for1                        # go to for1
+end1:       li      $v0     1                   # result = 1;
+            jr      $ra                         # return result;
+
+end_false:  li      $v0     0                   # result = 0;
+            jr      $ra                         # return result;
